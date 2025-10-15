@@ -27,4 +27,9 @@ def handle_photo(message):
     ph_text = "Я получил фото! 👌🏿"
     bot.reply_to(message, ph_text)
 
+    with open(filename, 'rb') as file_to_send:
+        bot.send_document(message.chat.id, file_to_send, caption="Держи файл без сжатия!")
+    
+    os.remove(filename)
+
 bot.polling(none_stop=True)
