@@ -14,6 +14,7 @@ def handle_start(message):
 
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
+    print(message)
     ph_text = "Я получил фото! 👌🏿"
     bot.reply_to(message, ph_text)
 
