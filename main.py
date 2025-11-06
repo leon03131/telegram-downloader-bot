@@ -12,8 +12,6 @@ def handle_start(message):
     hi_text = "Привет! Я бот для скачивания медиа. Отправьте мне фото, видео или ссылку на стикерпак."
     bot.reply_to(message, hi_text)
 
-# ниже пиздец
-
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
     photo_id = message.photo[-1].file_id
