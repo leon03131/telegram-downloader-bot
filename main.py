@@ -54,6 +54,16 @@ def handle_text(message):
             prefix = "https://t.me/addstickers/" # обозначаю https://t.me/addstickers/ как префикс (ну не нужное)
             pack_name = message.text.replace(prefix, "") # заменяю ссылку на пустоту чтобы остался только код стикерпака
             print(pack_name) # это для тестов
+            bot.get_sticker_set(pack_name)
+            sticker_set = bot.get_sticker_set(pack_name)
+            for sticker in sticker_set.stickers:
+                sticker_id = sticker.file_id
+                unique_id = sticker.file_unique_id
+                file_info = bot.get_file(sticker_id)
+                downloaded_file = bot.download_file(file_info.file_path)
+                filename = f"{unique_id}.png"
+                with open(filename, 'wb') as new_file:
+                    new_file.write(downloaded_file)
     else:
         print("Это обычный текст.")
     
