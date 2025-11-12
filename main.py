@@ -80,8 +80,10 @@ def handle_text(message):
                     with open(filename, 'wb') as new_file: # скачивание
                         new_file.write(downloaded_file) # скачивание ...
             shutil.make_archive(pack_name, 'zip', pack_name) # упаковываю в zip
+            shutil.rmtree(pack_name) # удаляю папку
             with open(pack_name + ".zip", 'rb') as file_to_send:
-                bot.send_document(message.chat.id, file_to_send, caption="Дerжи свой стикер пак!")
+                bot.send_document(message.chat.id, file_to_send, caption="Дeржи свой стикер пак!") # отправляю архив с стикерами
+            os.remove(pack_name + ".zip") # удаляю архив
     else:
         print("Это обычный текст.")
     
