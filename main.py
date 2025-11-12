@@ -48,4 +48,8 @@ def handle_video(message):
     
     os.remove(filename)
 
+@bot.message_handler(content_types=['text'])
+def handle_text(message):
+    
+
 bot.polling(none_stop=True)
