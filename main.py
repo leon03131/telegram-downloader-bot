@@ -55,7 +55,6 @@ def handle_text(message):
             prefix = "https://t.me/addstickers/" # обозначаю https://t.me/addstickers/ как префикс (ну не нужное)
             pack_name = message.text.replace(prefix, "") # заменяю ссылку на пустоту чтобы остался только код стикерпака
             print(pack_name) # это для тестов
-            bot.get_sticker_set(pack_name) # получаем id всех стикеров в паке
             sticker_set = bot.get_sticker_set(pack_name) # ну прописываем его в переменную
             for sticker in sticker_set.stickers: # через перебор скачиваем всё
                 print(sticker) # это нада (ключи чекнуть)
