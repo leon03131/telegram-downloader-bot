@@ -30,7 +30,7 @@ def handle_photo(message):
     
     os.remove(filename)
 
-@bot.message_handler(content_types=['video'])
+@bot.message_handler(content_types=['video']) # тут всё по аналогии с фото ничего нового
 def handle_video(message):
     video_id = message.video.file_id
     unique_id = message.video.file_unique_id
@@ -48,8 +48,14 @@ def handle_video(message):
     
     os.remove(filename)
 
-@bot.message_handler(content_types=['text'])
+@bot.message_handler(content_types=['text']) # хотелось бы чтобы существовал url но боты не умеют ловить ссылки а только текст :(
 def handle_text(message):
+    if message.text.startswith("https://t.me/addstickers/"): # ищет сообщения начинающиеся на https://t.me/addstickers/
+            prefix = "https://t.me/addstickers/" # обозначаю https://t.me/addstickers/ как префикс (ну не нужное)
+            pack_name = message.text.replace(prefix, "") # заменяю ссылку на пустоту чтобы остался только код стикерпака
+            print(pack_name) # это для тестов
+    else:
+        print("Это обычный текст.")
     
 
 bot.polling(none_stop=True)
