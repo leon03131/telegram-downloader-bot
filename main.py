@@ -12,8 +12,6 @@ def handle_start(message):
     hi_text = "Привет! Я бот для скачивания медиа. Отправьте мне фото, видео или ссылку на стикерпак."
     bot.reply_to(message, hi_text)
 
-# ниже пиздец
-
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
     photo_id = message.photo[-1].file_id
@@ -25,6 +23,24 @@ def handle_photo(message):
         new_file.write(downloaded_file)
 
     ph_text = "Я получил фото! 👌🏿"
+    bot.reply_to(message, ph_text)
+
+    with open(filename, 'rb') as file_to_send:
+        bot.send_document(message.chat.id, file_to_send, caption="Держи файл без сжатия!")
+    
+    os.remove(filename)
+
+@bot.message_handler(content_types=['video'])
+def handle_video(message):
+    video_id = message.video.file_id
+    unique_id = message.video.file_unique_id
+    file_info = bot.get_file(video_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+    filename = f"{unique_id}.mp4"
+    with open(filename, 'wb') as new_file:
+        new_file.write(downloaded_file)
+
+    ph_text = "Я получил видео! 👌🏿"
     bot.reply_to(message, ph_text)
 
     with open(filename, 'rb') as file_to_send:
