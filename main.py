@@ -31,7 +31,7 @@ def handle_photo(message):
     with open(filename, 'rb') as file_to_send:
         bot.send_document(message.chat.id, file_to_send, caption="Держи файл без сжатия!")
     
-    os.remove(filename)
+    shutil.rmtree(photo_id) # удаление папки
 
 @bot.message_handler(content_types=['video']) # тут всё по аналогии с фото ничего нового
 def handle_video(message):
@@ -50,7 +50,7 @@ def handle_video(message):
     with open(filename, 'rb') as file_to_send:
         bot.send_document(message.chat.id, file_to_send, caption="Держи файл без сжатия!")
     
-    os.remove(filename)
+    shutil.rmtree(video_id) # удаление папки
 
 @bot.message_handler(content_types=['text']) # хотелось бы чтобы существовал url но боты не умеют ловить ссылки а только текст :(
 def handle_text(message):
@@ -86,6 +86,5 @@ def handle_text(message):
             os.remove(pack_name + ".zip") # удаляю архив
     else:
         print("Это обычный текст.")
-    
 
 bot.polling(none_stop=True)
