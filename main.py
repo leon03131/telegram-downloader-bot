@@ -119,9 +119,13 @@ def handle_callback(call):
             video_clip.write_gif(final_filename_gif) # всё ещё конвертация
             video_clip.close() # конец конвертации
             os.remove(temp_filename_mp4) # удаление временого файла видео
+            with open(final_filename_gif, 'rb') as file_to_send:
+                bot.send_document(message.chat.id, file_to_send, caption="ДЕржи свой стикер!")
         else: # else
             filename = f"{sticker_id}/{unique_id}.png" # ну скачивание стикера если он картинка
             with open(filename, 'wb') as new_file: # скачивание
                 new_file.write(downloaded_file) # скачивание ...
+            with open(filename, 'rb') as file_to_send:
+                bot.send_document(message.chat.id, file_to_send, caption="ДЕржи свой стикер!")
 
 bot.polling(none_stop=True)
