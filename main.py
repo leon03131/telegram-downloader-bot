@@ -87,4 +87,19 @@ def handle_text(message):
     else:
         print("Это обычный текст.")
 
+@bot.message_handler(content_types=['sticker'])
+def handle_sticker(message):
+    markup = telebot.types.InlineKeyboardMarkup()
+    btn1 = telebot.types.InlineKeyboardButton(
+        text="Скачать стикер", 
+        callback_data="dl_sticker"
+    )
+    btn2 = telebot.types.InlineKeyboardButton(
+        text="Скачать стикерпак", 
+        callback_data="dl_pack"
+    )
+    markup.add(btn1,btn2)
+
+    bot.send_message(message.chat.id, "Выберите действие:", reply_markup=markup)
+
 bot.polling(none_stop=True)
