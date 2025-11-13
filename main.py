@@ -100,6 +100,28 @@ def handle_sticker(message):
     )
     markup.add(btn1,btn2)
 
-    bot.send_message(message.chat.id, "Выберите действие:", reply_markup=markup)
+    bot.reply_to(message, "Выберите действие:", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: True)
+def handle_callback(call):
+    if call.data == "dl_sticker":
+        sticker_id = call.message.reply_to_message.sticker.file_id
+        unique_id = call.message.reply_to_message.sticker.file_unique_id
+        os.mkdir(sticker_id)
+        file_info = bot.get_file(sticker_id)
+        downloaded_file = bot.download_file(file_info.file_path) # ... б... это такой просто
+        if call.message.reply_to_message.sticker.is_video: # проверка анимированный стикер или нет
+            temp_filename_mp4 = f"{sticker_id}/{unique_id}.mp4" # Короче как оказалось анимированные стикеры в тг это видео поэтому пришлось всё перелопатить потому что простов видео в формате webp или gif нельзя скачать он ломается и получается какиш
+            final_filename_gif = f"{sticker_id}/{unique_id}.gif" # задаю переменные
+            with open(temp_filename_mp4, 'wb') as new_file: # скачивание видео (стикера)
+                new_file.write(downloaded_file) # всё ещё скачивание ...
+            video_clip = VideoFileClip(temp_filename_mp4) # конвертация видео в гиф с помощью moviepy (да это долго но что делать просто видосы никому не нужны 100%)
+            video_clip.write_gif(final_filename_gif) # всё ещё конвертация
+            video_clip.close() # конец конвертации
+            os.remove(temp_filename_mp4) # удаление временого файла видео
+        else: # else
+            filename = f"{sticker_id}/{unique_id}.png" # ну скачивание стикера если он картинка
+            with open(filename, 'wb') as new_file: # скачивание
+                new_file.write(downloaded_file) # скачивание ...
 
 bot.polling(none_stop=True)
