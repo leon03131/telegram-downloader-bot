@@ -1,12 +1,9 @@
 import os
 import telebot
 import shutil
-import gzip
-import json
 from moviepy import VideoFileClip
 from dotenv import load_dotenv
-#from lottie.objects import Animation
-#from lottie.exporters.gif import export_gif
+from rlottie_python import LottieAnimation
 
 load_dotenv()
 token = os.getenv('TELEGRAM_TOKEN')
@@ -14,13 +11,8 @@ token = os.getenv('TELEGRAM_TOKEN')
 bot = telebot.TeleBot(token)
 
 def convert_tgs_to_gif(tgs_path, gif_path):
-    # открываю сжатый файл как текст
-
-    with gzip.open(tgs_path, 'rt') as f:
-        tgs_json = json.load(f) # превращаем текст в словарь питона
-
-    animation = Animation.from_dict(tgs_json) 
-    export_gif(animation, gif_path) # сохраняю 
+    anim = LottieAnimation.from_tgs(tgs_path)
+    anim.save_animation(gif_path)
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
@@ -97,10 +89,15 @@ def handle_text(message):
                     os.remove(temp_filename_mp4) # удаление временого файла видео
 
                 elif sticker.is_animated:
-                    temp_filename_tgs = f"{pack_name}/{unique_id}"
+                    temp_filename_tgs = f"{pack_name}/{unique_id}.tgs"
                     with open(temp_filename_tgs, 'wb') as new_file:
-                        new_file.write(downloaded_file) 
+                        new_file.write(downloaded_file)
 
+                    print(f"конвертирую: {temp_filename_tgs}")
+                    try:
+                        convert_tgs_to_gif(temp_filename_tgs, final_filename_gif)
+                    except Exception as e:
+                        print(f"ошибка конвертации: {e}")
                 else: # else
                     filename = f"{pack_name}/{unique_id}.png" # ну скачивание стикера если он картинка
 
