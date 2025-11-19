@@ -1,8 +1,12 @@
 import os
 import telebot
 import shutil
+import gzip
+import json
 from moviepy import VideoFileClip
 from dotenv import load_dotenv
+from lottie.objects import Animation
+from lottie.exporters.gif import export_gif
 
 load_dotenv()
 token = os.getenv('TELEGRAM_TOKEN')
@@ -75,6 +79,8 @@ def handle_text(message):
                     video_clip.write_gif(final_filename_gif) # всё ещё конвертация
                     video_clip.close() # конец конвертации
                     os.remove(temp_filename_mp4) # удаление временого файла видео
+                
+
                 else: # else
                     filename = f"{pack_name}/{unique_id}.png" # ну скачивание стикера если он картинка
                     with open(filename, 'wb') as new_file: # скачивание
