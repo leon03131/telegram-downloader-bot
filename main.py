@@ -1,6 +1,7 @@
 import os
 import telebot
 import shutil
+import ffmpeg
 from moviepy import VideoFileClip
 from dotenv import load_dotenv
 from rlottie_python import LottieAnimation
@@ -68,6 +69,7 @@ def handle_text(message):
             print(pack_name) # это для тестов
             os.mkdir(pack_name) # создаю папочку отдельную чтобы туда скачивать
             sticker_set = bot.get_sticker_set(pack_name) # ну прописываем его в переменную
+            bot.reply_to(message, "⏳ Скачиваю пак. Если там есть анимации, это займет время...")
 
             for sticker in sticker_set.stickers: # через перебор скачиваем всё
                 print(sticker) # это нада (ключи чекнуть)
@@ -83,22 +85,31 @@ def handle_text(message):
                     with open(temp_filename_mp4, 'wb') as new_file: # скачивание видео (стикера)
                         new_file.write(downloaded_file) # всё ещё скачивание ...
                         
-                    video_clip = VideoFileClip(temp_filename_mp4) # конвертация видео в гиф с помощью moviepy (да это долго но что делать просто видосы никому не нужны 100%)
-                    video_clip.write_gif(final_filename_gif) # всё ещё конвертация
-                    video_clip.close() # конец конвертации
+                    (
+                        ffmpeg  
+                        .input(temp_filename_mp4)
+                        .output(final_filename_gif)
+                        .run()
+                    )
                     os.remove(temp_filename_mp4) # удаление временого файла видео
 
                 elif sticker.is_animated:
                     temp_filename_tgs = f"{pack_name}/{unique_id}.tgs"
                     final_filename_gif = f"{pack_name}/{unique_id}.gif"
+
                     with open(temp_filename_tgs, 'wb') as new_file:
                         new_file.write(downloaded_file)
 
                     print(f"конвертирую: {temp_filename_tgs}")
                     try:
                         convert_tgs_to_gif(temp_filename_tgs, final_filename_gif)
+
+                        if os.path.exists(temp_filename_tgs):
+                            os.remove(temp_filename_tgs)
+
                     except Exception as e:
                         print(f"ошибка конвертации: {e}")
+
                 else: # else
                     filename = f"{pack_name}/{unique_id}.png" # ну скачивание стикера если он картинка
 
