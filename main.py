@@ -90,6 +90,7 @@ def handle_text(message):
 
                 elif sticker.is_animated:
                     temp_filename_tgs = f"{pack_name}/{unique_id}.tgs"
+                    final_filename_gif = f"{pack_name}/{unique_id}.gif"
                     with open(temp_filename_tgs, 'wb') as new_file:
                         new_file.write(downloaded_file)
 
