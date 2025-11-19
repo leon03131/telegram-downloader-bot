@@ -2,6 +2,7 @@ import os
 import telebot
 import shutil
 import ffmpeg
+import zipfile
 from moviepy import VideoFileClip
 from dotenv import load_dotenv
 from rlottie_python import LottieAnimation
@@ -71,6 +72,11 @@ def handle_text(message):
             sticker_set = bot.get_sticker_set(pack_name) # ну прописываем его в переменную
             bot.reply_to(message, "⏳ Скачиваю пак. Если там есть анимации, это займет время...")
 
+            files_to_send = []
+            current_size = 0
+            part_num = 1
+            LIMIT = 45 * 1024 * 1024
+
             for sticker in sticker_set.stickers: # через перебор скачиваем всё
                 print(sticker) # это нада (ключи чекнуть)
                 sticker_id = sticker.file_id # ну это для скачивания по аналогии с фотками и видео
@@ -78,6 +84,8 @@ def handle_text(message):
                 file_info = bot.get_file(sticker_id) # ...
                 downloaded_file = bot.download_file(file_info.file_path) # ... б... это такой просто
                 
+                current_file = ""
+
                 if sticker.is_video: # проверка анимированный стикер или нет
                     temp_filename_mp4 = f"{pack_name}/{unique_id}.mp4" # Короче как оказалось анимированные стикеры в тг это видео поэтому пришлось всё перелопатить потому что простов видео в формате webp или gif нельзя скачать он ломается и получается какиш
                     final_filename_gif = f"{pack_name}/{unique_id}.gif" # задаю переменные
@@ -92,6 +100,8 @@ def handle_text(message):
                         .run()
                     )
                     os.remove(temp_filename_mp4) # удаление временого файла видео
+
+                    current_file = final_filename_gif
 
                 elif sticker.is_animated:
                     temp_filename_tgs = f"{pack_name}/{unique_id}.tgs"
@@ -110,19 +120,54 @@ def handle_text(message):
                     except Exception as e:
                         print(f"ошибка конвертации: {e}")
 
+                    current_file = final_filename_gif
+
                 else: # else
                     filename = f"{pack_name}/{unique_id}.png" # ну скачивание стикера если он картинка
 
                     with open(filename, 'wb') as new_file: # скачивание
                         new_file.write(downloaded_file) # скачивание ...
-            shutil.make_archive(pack_name, 'zip', pack_name) # упаковываю в zip
-            shutil.rmtree(pack_name) # удаляю папку
+                    current_file = filename
 
-            with open(pack_name + ".zip", 'rb') as file_to_send:
-                bot.send_document(message.chat.id, file_to_send, caption="Дeржи свой стикер пак!") # отправляю архив с стикерами
-            os.remove(pack_name + ".zip") # удаляю архив
+                if current_file and os.path.exists(current_file):
+                    file_size = os.path.getsize(current_file)
+                
+                if current_size + file_size > LIMIT:
+                    archive_name = f"{pack_name}_part{part_num}.zip"
+                    print(f"📦 Отправляю часть {part_num}...")
+                    
+                    with zipfile.ZipFile(archive_name, 'w') as zipf:
+                        for file_path in files_to_send:
+                            zipf.write(file_path)
+                    
+                    with open(archive_name, 'rb') as doc:
+                        bot.send_document(message.chat.id, doc, caption=f"📦 Часть {part_num}", timeout=90)
+                    
+                    os.remove(archive_name)
+                    files_to_send = []
+                    current_size = 0
+                    part_num += 1
+                
+                files_to_send.append(current_file)
+                current_size += file_size
+
+            if files_to_send:
+                archive_name = f"{pack_name}_part{part_num}.zip"
+                print(f"📦 Отправляю финал...")
+                
+                with zipfile.ZipFile(archive_name, 'w') as zipf:
+                    for file_path in files_to_send:
+                        zipf.write(file_path)
+                
+                with open(archive_name, 'rb') as doc:
+                    bot.send_document(message.chat.id, doc, caption=f"📦 Часть {part_num} (Финал)")
+                os.remove(archive_name)
+
+            if os.path.exists(pack_name):
+                shutil.rmtree(pack_name)
+            print("✅ Готово!")
     else:
-        print("Это обычный текст.")
+        print(".")
 
 @bot.message_handler(content_types=['sticker'])
 def handle_sticker(message):
