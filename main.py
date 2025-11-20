@@ -141,7 +141,7 @@ def handle_text(message):
                             zipf.write(file_path)
                     
                     with open(archive_name, 'rb') as doc:
-                        bot.send_document(message.chat.id, doc, caption=f"📦 Часть {part_num}", timeout=90)
+                        bot.send_document(message.chat.id, doc, caption=f"📦 Часть {part_num}", timeout=120)
                     
                     os.remove(archive_name)
                     files_to_send = []
@@ -160,7 +160,7 @@ def handle_text(message):
                         zipf.write(file_path)
                 
                 with open(archive_name, 'rb') as doc:
-                    bot.send_document(message.chat.id, doc, caption=f"📦 Часть {part_num} (Финал)")
+                    bot.send_document(message.chat.id, doc, caption=f"📦 Часть {part_num} (Финал)", timeout=120)
                 os.remove(archive_name)
 
             if os.path.exists(pack_name):
@@ -218,5 +218,107 @@ def handle_callback(call):
             with open(filename, 'rb') as file_to_send:
                 bot.send_document(call.message.chat.id, file_to_send, caption="ДЕржи свой стикер!")
             shutil.rmtree(sticker_id) 
+    else:
+            pack_name = call.message.reply_to_message.sticker.set_name
+            os.mkdir(pack_name)
+            sticker_set = bot.get_sticker_set(pack_name)
+            bot.reply_to(call.message, "⏳ Скачиваю пак. Если там есть анимации, это займет время...")
+
+            files_to_send = []
+            current_size = 0
+            part_num = 1
+            LIMIT = 45 * 1024 * 1024
+
+            for sticker in sticker_set.stickers:
+                print(sticker)
+                sticker_id = sticker.file_id
+                unique_id = sticker.file_unique_id
+                file_info = bot.get_file(sticker_id)
+                downloaded_file = bot.download_file(file_info.file_path)
+                
+                current_file = ""
+
+                if sticker.is_video:
+                    temp_filename_mp4 = f"{pack_name}/{unique_id}.mp4"
+                    final_filename_gif = f"{pack_name}/{unique_id}.gif"
+
+                    with open(temp_filename_mp4, 'wb') as new_file:
+                        new_file.write(downloaded_file)
+                        
+                    (
+                        ffmpeg  
+                        .input(temp_filename_mp4)
+                        .output(final_filename_gif)
+                        .run()
+                    )
+                    os.remove(temp_filename_mp4)
+
+                    current_file = final_filename_gif
+
+                elif sticker.is_animated:
+                    temp_filename_tgs = f"{pack_name}/{unique_id}.tgs"
+                    final_filename_gif = f"{pack_name}/{unique_id}.gif"
+
+                    with open(temp_filename_tgs, 'wb') as new_file:
+                        new_file.write(downloaded_file)
+
+                    print(f"конвертирую: {temp_filename_tgs}")
+                    try:
+                        convert_tgs_to_gif(temp_filename_tgs, final_filename_gif)
+
+                        if os.path.exists(temp_filename_tgs):
+                            os.remove(temp_filename_tgs)
+
+                    except Exception as e:
+                        print(f"ошибка конвертации: {e}")
+
+                    current_file = final_filename_gif
+
+                else: # else
+                    filename = f"{pack_name}/{unique_id}.png"
+
+                    with open(filename, 'wb') as new_file:
+                        new_file.write(downloaded_file)
+                    current_file = filename
+
+                if current_file and os.path.exists(current_file):
+                    file_size = os.path.getsize(current_file)
+                
+                if current_size + file_size > LIMIT:
+                    archive_name = f"{pack_name}_part{part_num}.zip"
+                    print(f"📦 Отправляю часть {part_num}...")
+                    
+                    with zipfile.ZipFile(archive_name, 'w') as zipf:
+                        for file_path in files_to_send:
+                            zipf.write(file_path)
+                    
+                    with open(archive_name, 'rb') as doc:
+                        bot.send_document(call.message.chat.id, doc, caption=f"📦 Часть {part_num}", timeout=120)
+                    
+                    os.remove(archive_name)
+                    files_to_send = []
+                    current_size = 0
+                    part_num += 1
+                
+                files_to_send.append(current_file)
+                current_size += file_size
+
+            if files_to_send:
+                archive_name = f"{pack_name}_part{part_num}.zip"
+                print(f"📦 Отправляю финал...")
+                
+                with zipfile.ZipFile(archive_name, 'w') as zipf:
+                    for file_path in files_to_send:
+                        zipf.write(file_path)
+
+                with open(archive_name, 'rb') as doc:
+                    bot.send_document(call.message.chat.id, doc, caption=f"📦 Часть {part_num} (Финал)", timeout=120)
+                os.remove(archive_name)
+
+            if os.path.exists(pack_name):
+                shutil.rmtree(pack_name)
+                print("✅ Готово!")
+            else:
+                print(".")
 
 bot.polling(none_stop=True)
