@@ -82,22 +82,22 @@ def handle_video(message):
 
 @bot.message_handler(content_types=['text']) # хотелось бы чтобы существовал url но боты не умеют ловить ссылки а только текст :(
 def handle_text(message):
-    text = message.text
+#    text = message.text
+# с видосами не получилось пока что
+#    if "youtube.com" in text or "youtu.be" in text or "rutube.ru" in text or "vk.com/video" in text:
+#        bot.reply_to(message, "⏳ Вижу ссылку на видео! Пробую скачать...")
+#
+#        video_path = download_video_from_url(text)
+#
+#        if video_path and os.path.exists(video_path):
+#            with open(video_path, 'rb') as video_file:
+#                bot.send_video(message.chat.id, video_file, caption="Вот твое видео! 🎬")
+#            os.remove(video_path)
+#        else:
+#            bot.reply_to(message, "Не получилось скачать видео :( Возможно, оно слишком длинное или приватное.")
 
-    if "youtube.com" in text or "youtu.be" in text or "rutube.ru" in text or "vk.com/video" in text:
-        bot.reply_to(message, "⏳ Вижу ссылку на видео! Пробую скачать...")
-
-        video_path = download_video_from_url(text)
-
-        if video_path and os.path.exists(video_path):
-            with open(video_path, 'rb') as video_file:
-                bot.send_video(message.chat.id, video_file, caption="Вот твое видео! 🎬")
-            os.remove(video_path)
-        else:
-            bot.reply_to(message, "Не получилось скачать видео :( Возможно, оно слишком длинное или приватное.")
-
-
-    elif message.text.startswith("https://t.me/addstickers/"): # ищет сообщения начинающиеся на https://t.me/addstickers/
+#elif
+    if message.text.startswith("https://t.me/addstickers/"): # ищет сообщения начинающиеся на https://t.me/addstickers/
             prefix = "https://t.me/addstickers/" # обозначаю https://t.me/addstickers/ как префикс (ну не нужное)
             pack_name = message.text.replace(prefix, "") # заменяю ссылку на пустоту чтобы остался только код стикерпака
             print(pack_name) # это для тестов
