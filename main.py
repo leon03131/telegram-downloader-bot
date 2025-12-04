@@ -7,11 +7,13 @@ import yt_dlp
 from moviepy import VideoFileClip
 from dotenv import load_dotenv
 from rlottie_python import LottieAnimation
+from yandex_music import Client
 
 load_dotenv()
 token = os.getenv('TELEGRAM_TOKEN')
 
 bot = telebot.TeleBot(token)
+client = Client().init()
 
 def convert_tgs_to_gif(tgs_path, gif_path):
     anim = LottieAnimation.from_tgs(tgs_path)
@@ -82,7 +84,29 @@ def handle_video(message):
 
 @bot.message_handler(content_types=['text']) # хотелось бы чтобы существовал url но боты не умеют ловить ссылки а только текст :(
 def handle_text(message):
-#    text = message.text
+    text = message.text
+
+    if "music.yandex" in text:
+        bot.reply_to(message, "Вижу трек из Яндекс.Музыки! Пробую скачать...")
+
+        try:
+            text = text.split("?")[0]
+            track_id = 0
+
+            track = client.tracks([track_id])[0]
+
+            artist = track.artists[0].name if track.artists else "Неизвестен"
+            filename = f"{artist} - {track.title}.mp3"
+
+            track.download(filename)
+
+            with open(filename, 'rb') as file_to_send:
+                bot.send_document(message.chat.id, file_to_send, caption="Держи трек!")
+
+            os.remove(filename)
+            
+        except Exception as e:
+            bot.reply_to(message, f"Ой, ошибка: {e}")
 # с видосами не получилось пока что
 #    if "youtube.com" in text or "youtu.be" in text or "rutube.ru" in text or "vk.com/video" in text:
 #        bot.reply_to(message, "⏳ Вижу ссылку на видео! Пробую скачать...")
@@ -96,8 +120,8 @@ def handle_text(message):
 #        else:
 #            bot.reply_to(message, "Не получилось скачать видео :( Возможно, оно слишком длинное или приватное.")
 
-#elif
-    if message.text.startswith("https://t.me/addstickers/"): # ищет сообщения начинающиеся на https://t.me/addstickers/
+#elif (defolt if)
+    elif message.text.startswith("https://t.me/addstickers/"): # ищет сообщения начинающиеся на https://t.me/addstickers/
             prefix = "https://t.me/addstickers/" # обозначаю https://t.me/addstickers/ как префикс (ну не нужное)
             pack_name = message.text.replace(prefix, "") # заменяю ссылку на пустоту чтобы остался только код стикерпака
             print(pack_name) # это для тестов
