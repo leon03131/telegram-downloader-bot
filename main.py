@@ -99,44 +99,58 @@ def handle_text(message):
 
                 track = client.tracks([track_id])[0]
 
+                if not os.path.exists('music'):
+                    os.mkdir('music')
+
                 artist = track.artists[0].name if track.artists else "Неизвестен"
                 title = track.title
 
-                filename = f"{artist} - {title}.mp3"
-                cover_filename = f"{artist} - {title}.jpg"
+                safe_artist = "".join(c for c in artist if c not in r'\/:*?"<>|')
+                safe_title = "".join(c for c in title if c not in r'\/:*?"<>|')
 
-                filename = "".join(c for c in filename if c not in r'\/:*?"<>|')
-                cover_filename = "".join(c for c in cover_filename if c not in r'\/:*?"<>|')
+
+                filename = f"music/{safe_artist} - {safe_title}.mp3"
+
+                jpg_cover_path = f"music/{safe_artist} - {safe_title}.jpg"
+                png_cover_path = f"music/{safe_artist} - {safe_title}.png"
 
                 bot.reply_to(message, "Скачиваю трек и обложку...")
 
                 track.download(filename)
-                track.download_cover(cover_filename, "400x400")
+                track.download_cover(jpg_cover_path, "400x400")
 
                 try:
-                    img = Image.open(cover_filename)
+                    img = Image.open(jpg_cover_path)
                     img.thumbnail((200, 200), Image.Resampling.LANCZOS)
-                    
-                    png_cover = cover_filename.replace('.jpg', '.png')
-                    img.save(png_cover, format='PNG')
-                    cover_filename = png_cover
-                    
+                    img.save(png_cover_path, format='PNG')
                 except Exception as e:
                     print(f"Ошибка обработки обложки: {e}")
+                    png_cover_path = jpg_cover_path
 
-                with open(filename, 'rb') as audio_file, open(cover_filename, 'rb') as thumb_file:
-                    bot.send_audio(
-                        message.chat.id,
-                        audio_file,
-                        caption="Держи трек!",
-                        performer=artist,
-                        title=title,
-                        thumb=thumb_file
-                    )
+                with open(filename, 'rb') as f:
+                    audio_data = f.read()
+                
+                with open(png_cover_path, 'rb') as f:
+                    thumb_data = f.read()
 
-                os.remove(filename)
-                os.remove(cover_filename)
+                bot.send_audio(
+                    message.chat.id,
+                    audio_data,
+                    caption="Держи трек!",
+                    performer=artist,
+                    title=title,
+                    thumb=thumb_data
+                )
 
+                if os.path.exists(filename):
+                    os.remove(filename)
+                
+                if os.path.exists(jpg_cover_path):
+                    os.remove(jpg_cover_path)
+                
+                if os.path.exists(png_cover_path) and png_cover_path != jpg_cover_path:
+                    os.remove(png_cover_path)
+                
             else:
                 bot.reply_to(message, "Это ссылка на Яндекс, но я не вижу там трека.")
 
