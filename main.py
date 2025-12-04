@@ -4,7 +4,7 @@ import shutil
 import ffmpeg
 import zipfile
 import yt_dlp
-from moviepy import VideoFileClip
+from PIL import Image
 from dotenv import load_dotenv
 from rlottie_python import LottieAnimation
 from yandex_music import Client
@@ -101,19 +101,44 @@ def handle_text(message):
 
                 artist = track.artists[0].name if track.artists else "Неизвестен"
                 title = track.title
+
                 filename = f"{artist} - {title}.mp3"
-                
+                cover_filename = f"{artist} - {title}.jpg"
+
                 filename = "".join(c for c in filename if c not in r'\/:*?"<>|')
+                cover_filename = "".join(c for c in cover_filename if c not in r'\/:*?"<>|')
 
-                bot.reply_to(message, "Скачиваю...")
+                bot.reply_to(message, "Скачиваю трек и обложку...")
+
                 track.download(filename)
+                track.download_cover(cover_filename, "400x400")
 
-                with open(filename, 'rb') as file_to_send:
-                    bot.send_document(message.chat.id, file_to_send, caption="Держи трек!")
+                try:
+                    img = Image.open(cover_filename)
+                    img.thumbnail((200, 200), Image.Resampling.LANCZOS)
+                    
+                    png_cover = cover_filename.replace('.jpg', '.png')
+                    img.save(png_cover, format='PNG')
+                    cover_filename = png_cover
+                    
+                except Exception as e:
+                    print(f"Ошибка обработки обложки: {e}")
+
+                with open(filename, 'rb') as audio_file, open(cover_filename, 'rb') as thumb_file:
+                    bot.send_audio(
+                        message.chat.id,
+                        audio_file,
+                        caption="Держи трек!",
+                        performer=artist,
+                        title=title,
+                        thumb=thumb_file
+                    )
 
                 os.remove(filename)
+                os.remove(cover_filename)
+
             else:
-                bot.reply_to(message, "Это ссылка на Яндекс, но я не вижу там трека. Пришли ссылку именно на трек.")
+                bot.reply_to(message, "Это ссылка на Яндекс, но я не вижу там трека.")
 
         except Exception as e:
             bot.reply_to(message, f"Ой, ошибка: {e}")
@@ -136,8 +161,9 @@ def handle_text(message):
     elif message.text.startswith("https://t.me/addstickers/"): # ищет сообщения начинающиеся на https://t.me/addstickers/
             prefix = "https://t.me/addstickers/" # обозначаю https://t.me/addstickers/ как префикс (ну не нужное)
             pack_name = message.text.replace(prefix, "") # заменяю ссылку на пустоту чтобы остался только код стикерпака
+            safe_pack_name = "".join(c for c in pack_name if c not in r'\/:*?"<>|')
             print(pack_name) # это для тестов
-            os.mkdir(pack_name) # создаю папочку отдельную чтобы туда скачивать
+            os.mkdir(safe_pack_name) # создаю папочку отдельную чтобы туда скачивать
             sticker_set = bot.get_sticker_set(pack_name) # ну прописываем его в переменную
             bot.reply_to(message, "⏳ Скачиваю пак. Если там есть анимации, это займет время...")
 
@@ -156,8 +182,8 @@ def handle_text(message):
                 current_file = ""
 
                 if sticker.is_video: # проверка анимированный стикер или нет
-                    temp_filename_mp4 = f"{pack_name}/{unique_id}.mp4" # Короче как оказалось анимированные стикеры в тг это видео поэтому пришлось всё перелопатить потому что простов видео в формате webp или gif нельзя скачать он ломается и получается какиш
-                    final_filename_gif = f"{pack_name}/{unique_id}.gif" # задаю переменные
+                    temp_filename_mp4 = f"{safe_pack_name}/{unique_id}.mp4" # Короче как оказалось анимированные стикеры в тг это видео поэтому пришлось всё перелопатить потому что простов видео в формате webp или gif нельзя скачать он ломается и получается какиш
+                    final_filename_gif = f"{safe_pack_name}/{unique_id}.gif" # задаю переменные
 
                     with open(temp_filename_mp4, 'wb') as new_file: # скачивание видео (стикера)
                         new_file.write(downloaded_file) # всё ещё скачивание ...
@@ -173,8 +199,8 @@ def handle_text(message):
                     current_file = final_filename_gif
 
                 elif sticker.is_animated:
-                    temp_filename_tgs = f"{pack_name}/{unique_id}.tgs"
-                    final_filename_gif = f"{pack_name}/{unique_id}.gif"
+                    temp_filename_tgs = f"{safe_pack_name}/{unique_id}.tgs"
+                    final_filename_gif = f"{safe_pack_name}/{unique_id}.gif"
 
                     with open(temp_filename_tgs, 'wb') as new_file:
                         new_file.write(downloaded_file)
@@ -192,7 +218,7 @@ def handle_text(message):
                     current_file = final_filename_gif
 
                 else: # else
-                    filename = f"{pack_name}/{unique_id}.png" # ну скачивание стикера если он картинка
+                    filename = f"{safe_pack_name}/{unique_id}.png" # ну скачивание стикера если он картинка
 
                     with open(filename, 'wb') as new_file: # скачивание
                         new_file.write(downloaded_file) # скачивание ...
@@ -202,7 +228,7 @@ def handle_text(message):
                     file_size = os.path.getsize(current_file)
                 
                 if current_size + file_size > LIMIT:
-                    archive_name = f"{pack_name}_part{part_num}.zip"
+                    archive_name = f"{safe_pack_name}_part{part_num}.zip"
                     print(f"📦 Отправляю часть {part_num}...")
                     
                     with zipfile.ZipFile(archive_name, 'w') as zipf:
@@ -221,7 +247,7 @@ def handle_text(message):
                 current_size += file_size
 
             if files_to_send:
-                archive_name = f"{pack_name}_part{part_num}.zip"
+                archive_name = f"{safe_pack_name}_part{part_num}.zip"
                 print(f"📦 Отправляю финал...")
                 
                 with zipfile.ZipFile(archive_name, 'w') as zipf:
@@ -232,8 +258,8 @@ def handle_text(message):
                     bot.send_document(message.chat.id, doc, caption=f"📦 Часть {part_num} (Финал)", timeout=120)
                 os.remove(archive_name)
 
-            if os.path.exists(pack_name):
-                shutil.rmtree(pack_name)
+            if os.path.exists(safe_pack_name):
+                shutil.rmtree(safe_pack_name)
             print("✅ Готово!")
     else:
         print(".")
@@ -259,37 +285,44 @@ def handle_callback(call):
     if call.data == "dl_sticker":
         sticker_id = call.message.reply_to_message.sticker.file_id
         unique_id = call.message.reply_to_message.sticker.file_unique_id
-        os.mkdir(sticker_id)
+        safe_sticker_id = "".join(c for c in sticker_id if c not in r'\/:*?"<>|')
+        os.mkdir(safe_sticker_id)
         file_info = bot.get_file(sticker_id)
         downloaded_file = bot.download_file(file_info.file_path) # ... б... это такой просто
 
         if call.message.reply_to_message.sticker.is_video: # проверка анимированный стикер или нет
-            temp_filename_mp4 = f"{sticker_id}/{unique_id}.mp4" # Короче как оказалось анимированные стикеры в тг это видео поэтому пришлось всё перелопатить потому что простов видео в формате webp или gif нельзя скачать он ломается и получается какиш
-            final_filename_gif = f"{sticker_id}/{unique_id}.gif" # задаю переменные
+            temp_filename_mp4 = f"{safe_sticker_id}/{unique_id}.mp4" # Короче как оказалось анимированные стикеры в тг это видео поэтому пришлось всё перелопатить потому что простов видео в формате webp или gif нельзя скачать он ломается и получается какиш
+            final_filename_gif = f"{safe_sticker_id}/{unique_id}.gif" # задаю переменные
 
             with open(temp_filename_mp4, 'wb') as new_file: # скачивание видео (стикера)
                 new_file.write(downloaded_file) # всё ещё скачивание ...
-            video_clip = VideoFileClip(temp_filename_mp4) # конвертация видео в гиф с помощью moviepy (да это долго но что делать просто видосы никому не нужны 100%)
-            video_clip.write_gif(final_filename_gif) # всё ещё конвертация
-            video_clip.close() # конец конвертации
+
+            (
+                        ffmpeg  
+                        .input(temp_filename_mp4)
+                        .output(final_filename_gif)
+                        .run()
+                    )
+            
             os.remove(temp_filename_mp4) # удаление временого файла видео
 
             with open(final_filename_gif, 'rb') as file_to_send:
                 bot.send_document(call.message.chat.id, file_to_send, caption="ДЕржи свой стикер!")
-            shutil.rmtree(sticker_id) 
+            shutil.rmtree(safe_sticker_id)
 
         else: # else
-            filename = f"{sticker_id}/{unique_id}.png" # ну скачивание стикера если он картинка
+            filename = f"{safe_sticker_id}/{unique_id}.png" # ну скачивание стикера если он картинка
 
             with open(filename, 'wb') as new_file: # скачивание
                 new_file.write(downloaded_file) # скачивание ...
 
             with open(filename, 'rb') as file_to_send:
                 bot.send_document(call.message.chat.id, file_to_send, caption="ДЕржи свой стикер!")
-            shutil.rmtree(sticker_id) 
+            shutil.rmtree(safe_sticker_id)
     else:
             pack_name = call.message.reply_to_message.sticker.set_name
-            os.mkdir(pack_name)
+            safe_pack_name = "".join(c for c in pack_name if c not in r'\/:*?"<>|')
+            os.mkdir(safe_pack_name)
             sticker_set = bot.get_sticker_set(pack_name)
             bot.reply_to(call.message, "⏳ Скачиваю пак. Если там есть анимации, это займет время...")
 
@@ -308,8 +341,8 @@ def handle_callback(call):
                 current_file = ""
 
                 if sticker.is_video:
-                    temp_filename_mp4 = f"{pack_name}/{unique_id}.mp4"
-                    final_filename_gif = f"{pack_name}/{unique_id}.gif"
+                    temp_filename_mp4 = f"{safe_pack_name}/{unique_id}.mp4"
+                    final_filename_gif = f"{safe_pack_name}/{unique_id}.gif"
 
                     with open(temp_filename_mp4, 'wb') as new_file:
                         new_file.write(downloaded_file)
@@ -325,8 +358,8 @@ def handle_callback(call):
                     current_file = final_filename_gif
 
                 elif sticker.is_animated:
-                    temp_filename_tgs = f"{pack_name}/{unique_id}.tgs"
-                    final_filename_gif = f"{pack_name}/{unique_id}.gif"
+                    temp_filename_tgs = f"{safe_pack_name}/{unique_id}.tgs"
+                    final_filename_gif = f"{safe_pack_name}/{unique_id}.gif"
 
                     with open(temp_filename_tgs, 'wb') as new_file:
                         new_file.write(downloaded_file)
@@ -344,7 +377,7 @@ def handle_callback(call):
                     current_file = final_filename_gif
 
                 else: # else
-                    filename = f"{pack_name}/{unique_id}.png"
+                    filename = f"{safe_pack_name}/{unique_id}.png"
 
                     with open(filename, 'wb') as new_file:
                         new_file.write(downloaded_file)
@@ -354,7 +387,7 @@ def handle_callback(call):
                     file_size = os.path.getsize(current_file)
                 
                 if current_size + file_size > LIMIT:
-                    archive_name = f"{pack_name}_part{part_num}.zip"
+                    archive_name = f"{safe_pack_name}_part{part_num}.zip"
                     print(f"📦 Отправляю часть {part_num}...")
                     
                     with zipfile.ZipFile(archive_name, 'w') as zipf:
@@ -373,7 +406,7 @@ def handle_callback(call):
                 current_size += file_size
 
             if files_to_send:
-                archive_name = f"{pack_name}_part{part_num}.zip"
+                archive_name = f"{safe_pack_name}_part{part_num}.zip"
                 print(f"📦 Отправляю финал...")
                 
                 with zipfile.ZipFile(archive_name, 'w') as zipf:
@@ -384,8 +417,8 @@ def handle_callback(call):
                     bot.send_document(call.message.chat.id, doc, caption=f"📦 Часть {part_num} (Финал)", timeout=120)
                 os.remove(archive_name)
 
-            if os.path.exists(pack_name):
-                shutil.rmtree(pack_name)
+            if os.path.exists(safe_pack_name):
+                shutil.rmtree(safe_pack_name)
                 print("✅ Готово!")
             else:
                 print(".")
