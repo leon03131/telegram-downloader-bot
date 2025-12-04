@@ -11,9 +11,10 @@ from yandex_music import Client
 
 load_dotenv()
 token = os.getenv('TELEGRAM_TOKEN')
+yandextoken = os.getenv('YANDEX_TOKEN')
 
 bot = telebot.TeleBot(token)
-client = Client().init()
+client = Client(yandextoken).init()
 
 def convert_tgs_to_gif(tgs_path, gif_path):
     anim = LottieAnimation.from_tgs(tgs_path)
@@ -54,7 +55,7 @@ def handle_photo(message):
     with open(filename, 'wb') as new_file:
         new_file.write(downloaded_file)
 
-    ph_text = "Я получил фото! 👌🏿"
+    ph_text = "Я получил фото!"
     bot.reply_to(message, ph_text)
 
     with open(filename, 'rb') as file_to_send:
@@ -74,7 +75,7 @@ def handle_video(message):
     with open(filename, 'wb') as new_file:
         new_file.write(downloaded_file)
 
-    ph_text = "Я получил видео! 👌🏿"
+    ph_text = "Я получил видео!"
     bot.reply_to(message, ph_text)
 
     with open(filename, 'rb') as file_to_send:
@@ -90,23 +91,34 @@ def handle_text(message):
         bot.reply_to(message, "Вижу трек из Яндекс.Музыки! Пробую скачать...")
 
         try:
-            text = text.split("?")[0]
-            track_id = 0
+            url = text.split("?")[0]
 
-            track = client.tracks([track_id])[0]
+            if "/track/" in url:
+                parts = url.split("/track/")
+                track_id = parts[1].split("/")[0]
 
-            artist = track.artists[0].name if track.artists else "Неизвестен"
-            filename = f"{artist} - {track.title}.mp3"
+                track = client.tracks([track_id])[0]
 
-            track.download(filename)
+                artist = track.artists[0].name if track.artists else "Неизвестен"
+                title = track.title
+                filename = f"{artist} - {title}.mp3"
+                
+                filename = "".join(c for c in filename if c not in r'\/:*?"<>|')
 
-            with open(filename, 'rb') as file_to_send:
-                bot.send_document(message.chat.id, file_to_send, caption="Держи трек!")
+                bot.reply_to(message, "Скачиваю...")
+                track.download(filename)
 
-            os.remove(filename)
-            
+                with open(filename, 'rb') as file_to_send:
+                    bot.send_document(message.chat.id, file_to_send, caption="Держи трек!")
+
+                os.remove(filename)
+            else:
+                bot.reply_to(message, "Это ссылка на Яндекс, но я не вижу там трека. Пришли ссылку именно на трек.")
+
         except Exception as e:
             bot.reply_to(message, f"Ой, ошибка: {e}")
+            print(e)
+
 # с видосами не получилось пока что
 #    if "youtube.com" in text or "youtu.be" in text or "rutube.ru" in text or "vk.com/video" in text:
 #        bot.reply_to(message, "⏳ Вижу ссылку на видео! Пробую скачать...")
