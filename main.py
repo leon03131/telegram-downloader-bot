@@ -3,7 +3,6 @@ import telebot
 import shutil
 import ffmpeg
 import zipfile
-import yt_dlp
 from PIL import Image
 from dotenv import load_dotenv
 from rlottie_python import LottieAnimation
@@ -23,13 +22,6 @@ def ensure_folder(path):
 def convert_tgs_to_gif(tgs_path, gif_path):
     anim = LottieAnimation.from_tgs(tgs_path)
     anim.save_animation(gif_path)
-
-def download_video_from_url(url):
-    ydl_opts = {
-        'format': 'best[ext=mp4]',
-        'outtmpl': 'downloads/%(id)s.%(ext)s',
-        'quiet': True,
-    }
 
     if not os.path.exists('downloads'):
         os.mkdir('downloads')
