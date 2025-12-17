@@ -158,7 +158,7 @@ def handle_text(message):
             print(e)
 
 # с видосами не получилось пока что
-    elif "youtube.com" in text or "youtu.be" in text or "rutube.ru" in text or "vk.com/video" in text:
+    elif "youtube.com" in text or "youtu.be" in text or "rutube.ru" in text or "vkvideo.ru" in text:
         bot.reply_to(message, "Я пока не умею скачивать видео, это сложно :( Но я умею стикеры и музыку!")
 #
 #        video_path = download_video_from_url(text)
