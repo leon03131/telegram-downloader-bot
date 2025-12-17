@@ -16,6 +16,10 @@ yandextoken = os.getenv('YANDEX_TOKEN')
 bot = telebot.TeleBot(token)
 client = Client(yandextoken).init()
 
+def ensure_folder(path):
+    if not os.path.exists(path):
+        os.makedirs(path, exist_ok=True)
+
 def convert_tgs_to_gif(tgs_path, gif_path):
     anim = LottieAnimation.from_tgs(tgs_path)
     anim.save_animation(gif_path)
@@ -45,12 +49,14 @@ def handle_start(message):
 
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
+    user_id = message.from_user.id
     photo_id = message.photo[-1].file_id
     unique_id = message.photo[-1].file_unique_id
-    os.mkdir(photo_id)
+    user_dir = f"photos/photos_{user_id}"
+    ensure_folder(user_dir)
     file_info = bot.get_file(photo_id)
     downloaded_file = bot.download_file(file_info.file_path)
-    filename = f"{photo_id}/{unique_id}.jpg"
+    filename = f"{user_dir}/{unique_id}.jpg"
 
     with open(filename, 'wb') as new_file:
         new_file.write(downloaded_file)
@@ -61,16 +67,18 @@ def handle_photo(message):
     with open(filename, 'rb') as file_to_send:
         bot.send_document(message.chat.id, file_to_send, caption="Держи файл без сжатия!")
     
-    shutil.rmtree(photo_id)
+    shutil.rmtree(user_dir)
 
 @bot.message_handler(content_types=['video'])
 def handle_video(message):
+    user_id = message.from_user.id
     video_id = message.video.file_id
     unique_id = message.video.file_unique_id
-    os.mkdir(video_id)
+    user_dir = f"videos/videos_{user_id}"
+    ensure_folder(user_dir)
     file_info = bot.get_file(video_id)
     downloaded_file = bot.download_file(file_info.file_path)
-    filename = f"{video_id}/{unique_id}.mp4"
+    filename = f"{user_dir}/{unique_id}.mp4"
 
     with open(filename, 'wb') as new_file:
         new_file.write(downloaded_file)
@@ -81,16 +89,16 @@ def handle_video(message):
     with open(filename, 'rb') as file_to_send:
         bot.send_document(message.chat.id, file_to_send, caption="Держи файл без сжатия!")
     
-    shutil.rmtree(video_id)
+    shutil.rmtree(user_dir)
 
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     text = message.text
+    user_id = message.from_user.id
 
     if "music.yandex" in text:
         bot.reply_to(message, "Вижу трек из Яндекс.Музыки! Пробую скачать...")
-        user_id = message.from_user.id
-
+        
         try:
             url = text.split("?")[0]
 
@@ -110,9 +118,7 @@ def handle_text(message):
                 safe_title = "".join(c for c in title if c not in r'\/:*?"<>|')
 
                 user_music_dir = f"music/music_{user_id}"
-
-                if not os.path.exists(user_music_dir):
-                    os.mkdir(user_music_dir)
+                ensure_folder(user_music_dir)
 
                 filename = f"{user_music_dir}/{safe_artist} - {safe_title}.mp3"
 
@@ -163,12 +169,15 @@ def handle_text(message):
     elif message.text.startswith("https://t.me/addstickers/"):
             prefix = "https://t.me/addstickers/"
             pack_name = message.text.replace(prefix, "")
-            user_id = message.from_user.id
             clean_pack_name = "".join(c for c in pack_name if c not in r'\/:*?"<>|')
-            safe_pack_name = f"{user_id}_{clean_pack_name}"
-            print(pack_name)
-            os.mkdir(safe_pack_name)
+            base_user_dir = f"stickers/stickers_{user_id}"
+            pack_dir = f"{base_user_dir}/{clean_pack_name}"
+            ensure_folder(pack_dir)
             sticker_set = bot.get_sticker_set(pack_name)
+            pack_title = sticker_set.title 
+            clean_pack_title = "".join(c for c in pack_title if c not in r'\/:*?"<>|').strip()
+            if not clean_pack_title: 
+                clean_pack_title = "sticker_pack"
             bot.reply_to(message, "⏳ Скачиваю пак. Если там есть анимации, это займет время...")
 
             files_to_send = []
@@ -186,8 +195,8 @@ def handle_text(message):
                 current_file = ""
 
                 if sticker.is_video:
-                    temp_filename_mp4 = f"{safe_pack_name}/{unique_id}.mp4"
-                    final_filename_gif = f"{safe_pack_name}/{unique_id}.gif"
+                    temp_filename_mp4 = f"{pack_dir}/{unique_id}.mp4"
+                    final_filename_gif = f"{pack_dir}/{unique_id}.gif"
 
                     with open(temp_filename_mp4, 'wb') as new_file:
                         new_file.write(downloaded_file)
@@ -203,8 +212,8 @@ def handle_text(message):
                     current_file = final_filename_gif
 
                 elif sticker.is_animated:
-                    temp_filename_tgs = f"{safe_pack_name}/{unique_id}.tgs"
-                    final_filename_gif = f"{safe_pack_name}/{unique_id}.gif"
+                    temp_filename_tgs = f"{pack_dir}/{unique_id}.tgs"
+                    final_filename_gif = f"{pack_dir}/{unique_id}.gif"
 
                     with open(temp_filename_tgs, 'wb') as new_file:
                         new_file.write(downloaded_file)
@@ -222,7 +231,7 @@ def handle_text(message):
                     current_file = final_filename_gif
 
                 else: # else
-                    filename = f"{safe_pack_name}/{unique_id}.png"
+                    filename = f"{pack_dir}/{unique_id}.png"
 
                     with open(filename, 'wb') as new_file:
                         new_file.write(downloaded_file)
@@ -232,12 +241,12 @@ def handle_text(message):
                     file_size = os.path.getsize(current_file)
                 
                 if current_size + file_size > LIMIT:
-                    archive_name = f"{safe_pack_name}/{clean_pack_name}_part{part_num}.zip"
+                    archive_name = f"{base_user_dir}/{clean_pack_title}_part{part_num}.zip"
                     print(f"📦 Отправляю часть {part_num}...")
                     
                     with zipfile.ZipFile(archive_name, 'w') as zipf:
                         for file_path in files_to_send:
-                            zipf.write(file_path)
+                            zipf.write(file_path, arcname=os.path.basename(file_path))
                     
                     with open(archive_name, 'rb') as doc:
                         bot.send_document(message.chat.id, doc, caption=f"📦 Часть {part_num}", timeout=120)
@@ -251,19 +260,19 @@ def handle_text(message):
                 current_size += file_size
 
             if files_to_send:
-                archive_name = f"{safe_pack_name}/{clean_pack_name}_part{part_num}.zip"
+                archive_name = f"{base_user_dir}/{clean_pack_title}_part{part_num}.zip"
                 print(f"📦 Отправляю финал...")
                 
                 with zipfile.ZipFile(archive_name, 'w') as zipf:
                     for file_path in files_to_send:
-                        zipf.write(file_path)
+                        zipf.write(file_path, arcname=os.path.basename(file_path))
                 
                 with open(archive_name, 'rb') as doc:
                     bot.send_document(message.chat.id, doc, caption=f"📦 Часть {part_num} (Финал)", timeout=120)
                 os.remove(archive_name)
 
-            if os.path.exists(safe_pack_name):
-                shutil.rmtree(safe_pack_name)
+            if os.path.exists(base_user_dir):
+                shutil.rmtree(base_user_dir)
             print("✅ Готово!")
     else:
         print(".")
@@ -285,21 +294,22 @@ def handle_sticker(message):
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
-
+    user_id = call.from_user.id
+    
     if call.data == "dl_sticker":
-        user_id = call.from_user.id
         sticker_id = call.message.reply_to_message.sticker.file_id
         unique_id = call.message.reply_to_message.sticker.file_unique_id
-        clean_sticker_id = "".join(c for c in sticker_id if c not in r'\/:*?"<>|')
-        safe_sticker_id = f"{user_id}_{clean_sticker_id}"
-        if not os.path.exists(safe_sticker_id):
-            os.mkdir(safe_sticker_id)
+
+        base_user_dir = f"stickers/stickers_{user_id}"
+        task_dir = f"{base_user_dir}/single_{unique_id}"
+        ensure_folder(task_dir)
+
         file_info = bot.get_file(sticker_id)
         downloaded_file = bot.download_file(file_info.file_path)
 
         if call.message.reply_to_message.sticker.is_video:
-            temp_filename_mp4 = f"{safe_sticker_id}/{unique_id}.mp4"
-            final_filename_gif = f"{safe_sticker_id}/{unique_id}.gif"
+            temp_filename_mp4 = f"{task_dir}/{unique_id}.mp4"
+            final_filename_gif = f"{task_dir}/{unique_id}.gif"
 
             with open(temp_filename_mp4, 'wb') as new_file:
                 new_file.write(downloaded_file)
@@ -315,11 +325,11 @@ def handle_callback(call):
 
             with open(final_filename_gif, 'rb') as file_to_send:
                 bot.send_document(call.message.chat.id, file_to_send, caption="Держи свой стикер!")
-            shutil.rmtree(safe_sticker_id)
+            shutil.rmtree(task_dir)
 
         elif call.message.reply_to_message.sticker.is_animated:
-            temp_filename_tgs = f"{safe_sticker_id}/{unique_id}.tgs"
-            final_filename_gif = f"{safe_sticker_id}/{unique_id}.gif"
+            temp_filename_tgs = f"{task_dir}/{unique_id}.tgs"
+            final_filename_gif = f"{task_dir}/{unique_id}.gif"
 
             with open(temp_filename_tgs, 'wb') as new_file:
                 new_file.write(downloaded_file)
@@ -338,24 +348,31 @@ def handle_callback(call):
                 with open(final_filename_gif, 'rb') as file_to_send:
                     bot.send_document(call.message.chat.id, file_to_send, caption="Держи свой стикер!")
             
-            shutil.rmtree(safe_sticker_id)
+            shutil.rmtree(task_dir)
 
         else: # else
-            filename = f"{safe_sticker_id}/{unique_id}.png"
+            filename = f"{task_dir}/{unique_id}.png"
 
             with open(filename, 'wb') as new_file:
                 new_file.write(downloaded_file)
 
             with open(filename, 'rb') as file_to_send:
                 bot.send_document(call.message.chat.id, file_to_send, caption="Держи свой стикер!")
-            shutil.rmtree(safe_sticker_id)
+            shutil.rmtree(task_dir)
     else:
             user_id = call.from_user.id
             pack_name = call.message.reply_to_message.sticker.set_name
             clean_pack_name = "".join(c for c in pack_name if c not in r'\/:*?"<>|')
-            safe_pack_name = f"{user_id}_{clean_pack_name}"
-            os.mkdir(safe_pack_name)
+
+            base_user_dir = f"stickers/stickers_{user_id}"
+            pack_dir = f"{base_user_dir}/{clean_pack_name}"
+            ensure_folder(pack_dir)
+
             sticker_set = bot.get_sticker_set(pack_name)
+            pack_title = sticker_set.title 
+            clean_pack_title = "".join(c for c in pack_title if c not in r'\/:*?"<>|').strip()
+            if not clean_pack_title: 
+                clean_pack_title = "sticker_pack"
             bot.reply_to(call.message, "⏳ Скачиваю пак. Если там есть анимации, это займет время...")
 
             files_to_send = []
@@ -373,8 +390,8 @@ def handle_callback(call):
                 current_file = ""
 
                 if sticker.is_video:
-                    temp_filename_mp4 = f"{safe_pack_name}/{unique_id}.mp4"
-                    final_filename_gif = f"{safe_pack_name}/{unique_id}.gif"
+                    temp_filename_mp4 = f"{pack_dir}/{unique_id}.mp4"
+                    final_filename_gif = f"{pack_dir}/{unique_id}.gif"
 
                     with open(temp_filename_mp4, 'wb') as new_file:
                         new_file.write(downloaded_file)
@@ -390,8 +407,8 @@ def handle_callback(call):
                     current_file = final_filename_gif
 
                 elif sticker.is_animated:
-                    temp_filename_tgs = f"{safe_pack_name}/{unique_id}.tgs"
-                    final_filename_gif = f"{safe_pack_name}/{unique_id}.gif"
+                    temp_filename_tgs = f"{pack_dir}/{unique_id}.tgs"
+                    final_filename_gif = f"{pack_dir}/{unique_id}.gif"
 
                     with open(temp_filename_tgs, 'wb') as new_file:
                         new_file.write(downloaded_file)
@@ -409,7 +426,7 @@ def handle_callback(call):
                     current_file = final_filename_gif
 
                 else: # else
-                    filename = f"{safe_pack_name}/{unique_id}.png"
+                    filename = f"{pack_dir}/{unique_id}.png"
 
                     with open(filename, 'wb') as new_file:
                         new_file.write(downloaded_file)
@@ -419,12 +436,12 @@ def handle_callback(call):
                     file_size = os.path.getsize(current_file)
                 
                 if current_size + file_size > LIMIT:
-                    archive_name = f"{safe_pack_name}/{clean_pack_name}_part{part_num}.zip"
+                    archive_name = f"{base_user_dir}/{clean_pack_title}_part{part_num}.zip"
                     print(f"📦 Отправляю часть {part_num}...")
                     
                     with zipfile.ZipFile(archive_name, 'w') as zipf:
                         for file_path in files_to_send:
-                            zipf.write(file_path)
+                            zipf.write(file_path, arcname=os.path.basename(file_path))
                     
                     with open(archive_name, 'rb') as doc:
                         bot.send_document(call.message.chat.id, doc, caption=f"📦 Часть {part_num}", timeout=120)
@@ -438,19 +455,19 @@ def handle_callback(call):
                 current_size += file_size
 
             if files_to_send:
-                archive_name = f"{safe_pack_name}/{clean_pack_name}_part{part_num}.zip"
+                archive_name = f"{base_user_dir}/{clean_pack_title}_part{part_num}.zip"
                 print(f"📦 Отправляю финал...")
                 
                 with zipfile.ZipFile(archive_name, 'w') as zipf:
                     for file_path in files_to_send:
-                        zipf.write(file_path)
+                        zipf.write(file_path, arcname=os.path.basename(file_path))
 
                 with open(archive_name, 'rb') as doc:
                     bot.send_document(call.message.chat.id, doc, caption=f"📦 Часть {part_num} (Финал)", timeout=120)
                 os.remove(archive_name)
 
-            if os.path.exists(safe_pack_name):
-                shutil.rmtree(safe_pack_name)
+            if os.path.exists(base_user_dir):
+                shutil.rmtree(base_user_dir)
                 print("✅ Готово!")
             else:
                 print(".")
