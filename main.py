@@ -61,9 +61,9 @@ def handle_photo(message):
     with open(filename, 'rb') as file_to_send:
         bot.send_document(message.chat.id, file_to_send, caption="Держи файл без сжатия!")
     
-    shutil.rmtree(photo_id) # удаление папки
+    shutil.rmtree(photo_id)
 
-@bot.message_handler(content_types=['video']) # тут всё по аналогии с фото ничего нового
+@bot.message_handler(content_types=['video'])
 def handle_video(message):
     video_id = message.video.file_id
     unique_id = message.video.file_unique_id
@@ -81,9 +81,9 @@ def handle_video(message):
     with open(filename, 'rb') as file_to_send:
         bot.send_document(message.chat.id, file_to_send, caption="Держи файл без сжатия!")
     
-    shutil.rmtree(video_id) # удаление папки
+    shutil.rmtree(video_id)
 
-@bot.message_handler(content_types=['text']) # хотелось бы чтобы существовал url но боты не умеют ловить ссылки а только текст :(
+@bot.message_handler(content_types=['text'])
 def handle_text(message):
     text = message.text
 
@@ -157,29 +157,18 @@ def handle_text(message):
             bot.reply_to(message, f"Ой, ошибка: {e}")
             print(e)
 
-# с видосами не получилось пока что
     elif "youtube.com" in text or "youtu.be" in text or "rutube.ru" in text or "vkvideo.ru" in text:
         bot.reply_to(message, "Я пока не умею скачивать видео, это сложно :( Но я умею стикеры и музыку!")
-#
-#        video_path = download_video_from_url(text)
-#
-#        if video_path and os.path.exists(video_path):
-#            with open(video_path, 'rb') as video_file:
-#                bot.send_video(message.chat.id, video_file, caption="Вот твое видео! 🎬")
-#            os.remove(video_path)
-#        else:
-#            bot.reply_to(message, "Не получилось скачать видео :( Возможно, оно слишком длинное или приватное.")
 
-#elif (defolt if)
-    elif message.text.startswith("https://t.me/addstickers/"): # ищет сообщения начинающиеся на https://t.me/addstickers/
-            prefix = "https://t.me/addstickers/" # обозначаю https://t.me/addstickers/ как префикс (ну не нужное)
-            pack_name = message.text.replace(prefix, "") # заменяю ссылку на пустоту чтобы остался только код стикерпака
+    elif message.text.startswith("https://t.me/addstickers/"):
+            prefix = "https://t.me/addstickers/"
+            pack_name = message.text.replace(prefix, "")
             user_id = message.from_user.id
             clean_pack_name = "".join(c for c in pack_name if c not in r'\/:*?"<>|')
             safe_pack_name = f"{user_id}_{clean_pack_name}"
-            print(pack_name) # это для тестов
-            os.mkdir(safe_pack_name) # создаю папочку отдельную чтобы туда скачивать
-            sticker_set = bot.get_sticker_set(pack_name) # ну прописываем его в переменную
+            print(pack_name)
+            os.mkdir(safe_pack_name)
+            sticker_set = bot.get_sticker_set(pack_name)
             bot.reply_to(message, "⏳ Скачиваю пак. Если там есть анимации, это займет время...")
 
             files_to_send = []
@@ -187,21 +176,21 @@ def handle_text(message):
             part_num = 1
             LIMIT = 45 * 1024 * 1024
 
-            for sticker in sticker_set.stickers: # через перебор скачиваем всё
-                print(sticker) # это нада (ключи чекнуть)
-                sticker_id = sticker.file_id # ну это для скачивания по аналогии с фотками и видео
-                unique_id = sticker.file_unique_id # ...
-                file_info = bot.get_file(sticker_id) # ...
-                downloaded_file = bot.download_file(file_info.file_path) # ... б... это такой просто
+            for sticker in sticker_set.stickers:
+                print(sticker)
+                sticker_id = sticker.file_id
+                unique_id = sticker.file_unique_id
+                file_info = bot.get_file(sticker_id)
+                downloaded_file = bot.download_file(file_info.file_path)
                 
                 current_file = ""
 
-                if sticker.is_video: # проверка анимированный стикер или нет
-                    temp_filename_mp4 = f"{safe_pack_name}/{unique_id}.mp4" # Короче как оказалось анимированные стикеры в тг это видео поэтому пришлось всё перелопатить потому что простов видео в формате webp или gif нельзя скачать он ломается и получается какиш
-                    final_filename_gif = f"{safe_pack_name}/{unique_id}.gif" # задаю переменные
+                if sticker.is_video:
+                    temp_filename_mp4 = f"{safe_pack_name}/{unique_id}.mp4"
+                    final_filename_gif = f"{safe_pack_name}/{unique_id}.gif"
 
-                    with open(temp_filename_mp4, 'wb') as new_file: # скачивание видео (стикера)
-                        new_file.write(downloaded_file) # всё ещё скачивание ...
+                    with open(temp_filename_mp4, 'wb') as new_file:
+                        new_file.write(downloaded_file)
                         
                     (
                         ffmpeg  
@@ -209,7 +198,7 @@ def handle_text(message):
                         .output(final_filename_gif)
                         .run()
                     )
-                    os.remove(temp_filename_mp4) # удаление временого файла видео
+                    os.remove(temp_filename_mp4)
 
                     current_file = final_filename_gif
 
@@ -233,10 +222,10 @@ def handle_text(message):
                     current_file = final_filename_gif
 
                 else: # else
-                    filename = f"{safe_pack_name}/{unique_id}.png" # ну скачивание стикера если он картинка
+                    filename = f"{safe_pack_name}/{unique_id}.png"
 
-                    with open(filename, 'wb') as new_file: # скачивание
-                        new_file.write(downloaded_file) # скачивание ...
+                    with open(filename, 'wb') as new_file:
+                        new_file.write(downloaded_file)
                     current_file = filename
 
                 if current_file and os.path.exists(current_file):
@@ -306,14 +295,14 @@ def handle_callback(call):
         if not os.path.exists(safe_sticker_id):
             os.mkdir(safe_sticker_id)
         file_info = bot.get_file(sticker_id)
-        downloaded_file = bot.download_file(file_info.file_path) # ... б... это такой просто
+        downloaded_file = bot.download_file(file_info.file_path)
 
-        if call.message.reply_to_message.sticker.is_video: # проверка анимированный стикер или нет
-            temp_filename_mp4 = f"{safe_sticker_id}/{unique_id}.mp4" # Короче как оказалось анимированные стикеры в тг это видео поэтому пришлось всё перелопатить потому что простов видео в формате webp или gif нельзя скачать он ломается и получается какиш
-            final_filename_gif = f"{safe_sticker_id}/{unique_id}.gif" # задаю переменные
+        if call.message.reply_to_message.sticker.is_video:
+            temp_filename_mp4 = f"{safe_sticker_id}/{unique_id}.mp4"
+            final_filename_gif = f"{safe_sticker_id}/{unique_id}.gif"
 
-            with open(temp_filename_mp4, 'wb') as new_file: # скачивание видео (стикера)
-                new_file.write(downloaded_file) # всё ещё скачивание ...
+            with open(temp_filename_mp4, 'wb') as new_file:
+                new_file.write(downloaded_file)
 
             (
                         ffmpeg  
@@ -322,7 +311,7 @@ def handle_callback(call):
                         .run()
                     )
             
-            os.remove(temp_filename_mp4) # удаление временого файла видео
+            os.remove(temp_filename_mp4)
 
             with open(final_filename_gif, 'rb') as file_to_send:
                 bot.send_document(call.message.chat.id, file_to_send, caption="Держи свой стикер!")
@@ -345,7 +334,6 @@ def handle_callback(call):
             except Exception as e:
                 print(f"ошибка конвертации: {e}")
 
-            # Проверяем что файл создался
             if os.path.exists(final_filename_gif):
                 with open(final_filename_gif, 'rb') as file_to_send:
                     bot.send_document(call.message.chat.id, file_to_send, caption="Держи свой стикер!")
@@ -353,10 +341,10 @@ def handle_callback(call):
             shutil.rmtree(safe_sticker_id)
 
         else: # else
-            filename = f"{safe_sticker_id}/{unique_id}.png" # ну скачивание стикера если он картинка
+            filename = f"{safe_sticker_id}/{unique_id}.png"
 
-            with open(filename, 'wb') as new_file: # скачивание
-                new_file.write(downloaded_file) # скачивание ...
+            with open(filename, 'wb') as new_file:
+                new_file.write(downloaded_file)
 
             with open(filename, 'rb') as file_to_send:
                 bot.send_document(call.message.chat.id, file_to_send, caption="Держи свой стикер!")
