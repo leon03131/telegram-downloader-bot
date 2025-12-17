@@ -89,6 +89,7 @@ def handle_text(message):
 
     if "music.yandex" in text:
         bot.reply_to(message, "Вижу трек из Яндекс.Музыки! Пробую скачать...")
+        user_id = message.from_user.id
 
         try:
             url = text.split("?")[0]
@@ -108,11 +109,15 @@ def handle_text(message):
                 safe_artist = "".join(c for c in artist if c not in r'\/:*?"<>|')
                 safe_title = "".join(c for c in title if c not in r'\/:*?"<>|')
 
+                user_music_dir = f"music/music_{user_id}"
 
-                filename = f"music/{safe_artist} - {safe_title}.mp3"
+                if not os.path.exists(user_music_dir):
+                    os.mkdir(user_music_dir)
 
-                jpg_cover_path = f"music/{safe_artist} - {safe_title}.jpg"
-                png_cover_path = f"music/{safe_artist} - {safe_title}.png"
+                filename = f"{user_music_dir}/{safe_artist} - {safe_title}.mp3"
+
+                jpg_cover_path = f"{user_music_dir}/{safe_artist} - {safe_title}.jpg"
+                png_cover_path = f"{user_music_dir}/{safe_artist} - {safe_title}.png"
 
                 bot.reply_to(message, "Скачиваю трек и обложку...")
 
@@ -142,14 +147,8 @@ def handle_text(message):
                     thumb=thumb_data
                 )
 
-                if os.path.exists(filename):
-                    os.remove(filename)
-                
-                if os.path.exists(jpg_cover_path):
-                    os.remove(jpg_cover_path)
-                
-                if os.path.exists(png_cover_path) and png_cover_path != jpg_cover_path:
-                    os.remove(png_cover_path)
+                if os.path.exists(user_music_dir):
+                    shutil.rmtree(user_music_dir)
                 
             else:
                 bot.reply_to(message, "Это ссылка на Яндекс, но я не вижу там трека.")
@@ -159,8 +158,8 @@ def handle_text(message):
             print(e)
 
 # с видосами не получилось пока что
-#    if "youtube.com" in text or "youtu.be" in text or "rutube.ru" in text or "vk.com/video" in text:
-#        bot.reply_to(message, "⏳ Вижу ссылку на видео! Пробую скачать...")
+    elif "youtube.com" in text or "youtu.be" in text or "rutube.ru" in text or "vk.com/video" in text:
+        bot.reply_to(message, "Я пока не умею скачивать видео, это сложно :( Но я умею стикеры и музыку!")
 #
 #        video_path = download_video_from_url(text)
 #
@@ -175,7 +174,9 @@ def handle_text(message):
     elif message.text.startswith("https://t.me/addstickers/"): # ищет сообщения начинающиеся на https://t.me/addstickers/
             prefix = "https://t.me/addstickers/" # обозначаю https://t.me/addstickers/ как префикс (ну не нужное)
             pack_name = message.text.replace(prefix, "") # заменяю ссылку на пустоту чтобы остался только код стикерпака
-            safe_pack_name = "".join(c for c in pack_name if c not in r'\/:*?"<>|')
+            user_id = message.from_user.id
+            clean_pack_name = "".join(c for c in pack_name if c not in r'\/:*?"<>|')
+            safe_pack_name = f"{user_id}_{clean_pack_name}"
             print(pack_name) # это для тестов
             os.mkdir(safe_pack_name) # создаю папочку отдельную чтобы туда скачивать
             sticker_set = bot.get_sticker_set(pack_name) # ну прописываем его в переменную
@@ -242,7 +243,7 @@ def handle_text(message):
                     file_size = os.path.getsize(current_file)
                 
                 if current_size + file_size > LIMIT:
-                    archive_name = f"{safe_pack_name}_part{part_num}.zip"
+                    archive_name = f"{safe_pack_name}/{clean_pack_name}_part{part_num}.zip"
                     print(f"📦 Отправляю часть {part_num}...")
                     
                     with zipfile.ZipFile(archive_name, 'w') as zipf:
@@ -261,7 +262,7 @@ def handle_text(message):
                 current_size += file_size
 
             if files_to_send:
-                archive_name = f"{safe_pack_name}_part{part_num}.zip"
+                archive_name = f"{safe_pack_name}/{clean_pack_name}_part{part_num}.zip"
                 print(f"📦 Отправляю финал...")
                 
                 with zipfile.ZipFile(archive_name, 'w') as zipf:
@@ -297,10 +298,13 @@ def handle_sticker(message):
 def handle_callback(call):
 
     if call.data == "dl_sticker":
+        user_id = call.from_user.id
         sticker_id = call.message.reply_to_message.sticker.file_id
         unique_id = call.message.reply_to_message.sticker.file_unique_id
-        safe_sticker_id = "".join(c for c in sticker_id if c not in r'\/:*?"<>|')
-        os.mkdir(safe_sticker_id)
+        clean_sticker_id = "".join(c for c in sticker_id if c not in r'\/:*?"<>|')
+        safe_sticker_id = f"{user_id}_{clean_sticker_id}"
+        if not os.path.exists(safe_sticker_id):
+            os.mkdir(safe_sticker_id)
         file_info = bot.get_file(sticker_id)
         downloaded_file = bot.download_file(file_info.file_path) # ... б... это такой просто
 
@@ -321,7 +325,31 @@ def handle_callback(call):
             os.remove(temp_filename_mp4) # удаление временого файла видео
 
             with open(final_filename_gif, 'rb') as file_to_send:
-                bot.send_document(call.message.chat.id, file_to_send, caption="ДЕржи свой стикер!")
+                bot.send_document(call.message.chat.id, file_to_send, caption="Держи свой стикер!")
+            shutil.rmtree(safe_sticker_id)
+
+        elif call.message.reply_to_message.sticker.is_animated:
+            temp_filename_tgs = f"{safe_sticker_id}/{unique_id}.tgs"
+            final_filename_gif = f"{safe_sticker_id}/{unique_id}.gif"
+
+            with open(temp_filename_tgs, 'wb') as new_file:
+                new_file.write(downloaded_file)
+
+            print(f"конвертирую: {temp_filename_tgs}")
+            try:
+                convert_tgs_to_gif(temp_filename_tgs, final_filename_gif)
+
+                if os.path.exists(temp_filename_tgs):
+                    os.remove(temp_filename_tgs)
+
+            except Exception as e:
+                print(f"ошибка конвертации: {e}")
+
+            # Проверяем что файл создался
+            if os.path.exists(final_filename_gif):
+                with open(final_filename_gif, 'rb') as file_to_send:
+                    bot.send_document(call.message.chat.id, file_to_send, caption="Держи свой стикер!")
+            
             shutil.rmtree(safe_sticker_id)
 
         else: # else
@@ -331,11 +359,13 @@ def handle_callback(call):
                 new_file.write(downloaded_file) # скачивание ...
 
             with open(filename, 'rb') as file_to_send:
-                bot.send_document(call.message.chat.id, file_to_send, caption="ДЕржи свой стикер!")
+                bot.send_document(call.message.chat.id, file_to_send, caption="Держи свой стикер!")
             shutil.rmtree(safe_sticker_id)
     else:
+            user_id = call.from_user.id
             pack_name = call.message.reply_to_message.sticker.set_name
-            safe_pack_name = "".join(c for c in pack_name if c not in r'\/:*?"<>|')
+            clean_pack_name = "".join(c for c in pack_name if c not in r'\/:*?"<>|')
+            safe_pack_name = f"{user_id}_{clean_pack_name}"
             os.mkdir(safe_pack_name)
             sticker_set = bot.get_sticker_set(pack_name)
             bot.reply_to(call.message, "⏳ Скачиваю пак. Если там есть анимации, это займет время...")
@@ -401,7 +431,7 @@ def handle_callback(call):
                     file_size = os.path.getsize(current_file)
                 
                 if current_size + file_size > LIMIT:
-                    archive_name = f"{safe_pack_name}_part{part_num}.zip"
+                    archive_name = f"{safe_pack_name}/{clean_pack_name}_part{part_num}.zip"
                     print(f"📦 Отправляю часть {part_num}...")
                     
                     with zipfile.ZipFile(archive_name, 'w') as zipf:
@@ -420,7 +450,7 @@ def handle_callback(call):
                 current_size += file_size
 
             if files_to_send:
-                archive_name = f"{safe_pack_name}_part{part_num}.zip"
+                archive_name = f"{safe_pack_name}/{clean_pack_name}_part{part_num}.zip"
                 print(f"📦 Отправляю финал...")
                 
                 with zipfile.ZipFile(archive_name, 'w') as zipf:
