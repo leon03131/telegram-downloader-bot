@@ -230,7 +230,7 @@ def handle_text(message):
                             zipf.write(file_path, arcname=os.path.basename(file_path))
                     
                     with open(archive_name, 'rb') as doc:
-                        bot.send_document(message.chat.id, doc, caption=f"📦 Часть {part_num}", timeout=120)
+                        bot.send_document(message.chat.id, doc, caption=f"📦 Часть {part_num}", timeout=300)
                     
                     os.remove(archive_name)
                     files_to_send = []
@@ -249,7 +249,7 @@ def handle_text(message):
                         zipf.write(file_path, arcname=os.path.basename(file_path))
                 
                 with open(archive_name, 'rb') as doc:
-                    bot.send_document(message.chat.id, doc, caption=f"📦 Часть {part_num} (Финал)", timeout=120)
+                    bot.send_document(message.chat.id, doc, caption=f"📦 Часть {part_num} (Финал)", timeout=300)
                 os.remove(archive_name)
 
             if os.path.exists(base_user_dir):
@@ -425,7 +425,7 @@ def handle_callback(call):
                             zipf.write(file_path, arcname=os.path.basename(file_path))
                     
                     with open(archive_name, 'rb') as doc:
-                        bot.send_document(call.message.chat.id, doc, caption=f"📦 Часть {part_num}", timeout=120)
+                        bot.send_document(call.message.chat.id, doc, caption=f"📦 Часть {part_num}", timeout=300)
                     
                     os.remove(archive_name)
                     files_to_send = []
@@ -444,7 +444,7 @@ def handle_callback(call):
                         zipf.write(file_path, arcname=os.path.basename(file_path))
 
                 with open(archive_name, 'rb') as doc:
-                    bot.send_document(call.message.chat.id, doc, caption=f"📦 Часть {part_num} (Финал)", timeout=120)
+                    bot.send_document(call.message.chat.id, doc, caption=f"📦 Часть {part_num} (Финал)", timeout=300)
                 os.remove(archive_name)
 
             if os.path.exists(base_user_dir):
