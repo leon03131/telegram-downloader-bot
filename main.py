@@ -23,17 +23,6 @@ def convert_tgs_to_gif(tgs_path, gif_path):
     anim = LottieAnimation.from_tgs(tgs_path)
     anim.save_animation(gif_path)
 
-    if not os.path.exists('downloads'):
-        os.mkdir('downloads')
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-            return filename
-    except Exception as e:
-        print(f"Ошибка при скачивании: {e}")
-        return None
-
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     hi_text = "Привет! Я бот для скачивания медиа. Отправьте мне фото, видео или ссылку на стикерпак."
